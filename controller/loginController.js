@@ -33,31 +33,50 @@ exports.signIn = (request, response, next) => {
 }
 
 exports.register = (request, response, next) => {
+    const firstName = request.body.firstName;
+    const lastName = request.body.lastName;
+    const fullName = `${request.body.firstName} ${request.body.lastName}`;
 
-        bcrypt.genSalt(13, (err, salt) => {
-            bcrypt.hash(request.body.password, salt, (hashError, hash) => {
-                if (hash) {
-                    const user = new loginModel({
-                        name: request.body.name,
-                        email: request.body.email,
-                        password: hash
-                    });
-                    user.save().then((data) => {
-                        return response.status(200).json({
-                            message: "User Creation Successfull",
-                            data: data
-                        });
-                    }).catch((err) => {
-                        return response.status(500).json({
-                            message: "Internal Server Error",
-                            error: err
-                        });
-                    })
-                } else {
-                    console.log(hashError, "error")
-                }
+    loginModel.findOne({ email: request.body.email }).collation({ locale: 'en', strength: 2 }).then((data)=>{
+        if(data != null){
+            return response.status(200).json({
+                message: "Email already in use"
             })
-        })
+        }else{
+            bcrypt.genSalt(13, (err, salt) => {
+                bcrypt.hash(request.body.password, salt, (hashError, hash) => {
+                    if (hash) {
+                        const user = new loginModel({
+                            firstName: firstName,
+                            lastName: lastName,
+                            email: request.body.email,
+                            fullName: fullName,
+                            password: hash
+                        });
+                        user.save().then((data) => {
+                            return response.status(200).json({
+                                message: "User Created",
+                                data: data
+                            });
+                        }).catch((err) => {
+                            return response.status(500).json({
+                                message: "Internal Server Error",
+                                error: err
+                            });
+                        })
+                    } else {
+                        console.log(hashError, "error")
+                    }
+                })
+            })
+        }
+    }).catch((error)=>{
+        return response.status(500).json({
+            message: "Internal Server Error",
+            error: error
+        });
+    });
+        
     }
     // exports.forgotPassword = (request, response, next) => {
     //     const user = new loginModel();
