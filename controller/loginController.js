@@ -95,7 +95,7 @@ exports.forgotPassword = (request, response, next) => {
     const user = new loginModel();
     console.log(request.body.password, " Password");
     loginModel.findOne({ email: request.body.email }).then((result) => {
-            console.log(result, "data");
+            console.log(result, " data");
             if (!result) {
                 return response.status(400).json({
                     message: "Email not found",
