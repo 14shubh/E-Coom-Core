@@ -19,7 +19,10 @@ const loginmodel = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true
+        required: true,
+    },
+    phoneNumber: {
+        type: Number,
     }
 })
 
