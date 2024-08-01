@@ -1,12 +1,12 @@
-const loginModel = require("../models/loginModel");
+const identityModel = require("../models/identityModel");
+const userModel = require("../models/userModel");
 const bcrypt = require("bcrypt");
 
 exports.signIn = (request, response, next) => {
-    loginModel
+    identityModel
         .findOne({ email: request.body.email })
         .collation({ locale: "en", strength: 2 })
         .then((data) => {
-            console.log(data, "data one");
             if (data == null || data.length == 0) {
                 return response.status(201).json({
                     message: "Email not found",
@@ -15,10 +15,12 @@ exports.signIn = (request, response, next) => {
             } else {
                 bcrypt.compare(request.body.password, data.password, (err, result) => {
                     if (result) {
-                        return response.status(200).json({
-                            message: "login Success",
-                            data: data,
-                        });
+                        userModel.findById({_id: data._id}).then(result=>{
+                                return response.status(200).json({
+                                message: "login Success",
+                                data: result,
+                            });
+                        })
                     } else {
                         return response.status(200).json({
                             message: "Password did not match",
@@ -40,10 +42,8 @@ exports.register = (request, response, next) => {
     const firstName = request.body.firstName;
     const lastName = request.body.lastName;
     const fullName = `${request.body.firstName} ${request.body.lastName}`;
-    const phoneNumber =
-        request.body.phoneNumber != undefined ? request.body.phoneNumber : null;
-
-    loginModel
+    const phoneNumber = request.body.phoneNumber != undefined ? request.body.phoneNumber : null;
+    identityModel
         .findOne({ email: request.body.email })
         .collation({ locale: "en", strength: 2 })
         .then((data) => {
@@ -55,28 +55,34 @@ exports.register = (request, response, next) => {
                 bcrypt.genSalt(13, (err, salt) => {
                     bcrypt.hash(request.body.password, salt, (hashError, hash) => {
                         if (hash) {
-                            const user = new loginModel({
+                            const user = new userModel({
                                 firstName: firstName,
                                 lastName: lastName,
-                                email: request.body.email,
                                 fullName: fullName,
+                                email: request.body.email,
                                 password: hash,
                                 phoneNumber: phoneNumber,
                             });
-                            user
-                                .save()
-                                .then((data) => {
-                                    return response.status(200).json({
-                                        message: "User Created",
-                                        data: data,
-                                    });
+                            identityModel.create({email: request.body.email, password: hash}).then(result=>{
+                                    if(result){
+                                        delete user.password;
+                                        user._id = result._id;
+                                        user.save()
+                                        .then((data) => {
+                                            return response.status(200).json({
+                                                message: "User Created",
+                                                data: data,
+                                            });
+                                        })
+                                        .catch((err) => {
+                                            return response.status(500).json({
+                                                message: "Internal Server Error",
+                                                error: err,
+                                            });
+                                        });
+                                    }
                                 })
-                                .catch((err) => {
-                                    return response.status(500).json({
-                                        message: "Internal Server Error",
-                                        error: err,
-                                    });
-                                });
+                                
                         } else {
                             console.log(hashError, "error");
                         }
@@ -94,8 +100,7 @@ exports.register = (request, response, next) => {
 exports.forgotPassword = (request, response, next) => {
     const user = new loginModel();
     console.log(request.body.password, " Password");
-    loginModel.findOne({ email: request.body.email }).then((result) => {
-            console.log(result, " data");
+    identityModel.findOne({ email: request.body.email }).then((result) => {
             if (!result) {
                 return response.status(400).json({
                     message: "Email not found",
@@ -106,7 +111,7 @@ exports.forgotPassword = (request, response, next) => {
                     bcrypt.hash(request.body.password, salt, (hashError, hash) => {
                         console.log(hash, " hash Password");
                         if (hash) {
-                            loginModel.updateOne(
+                            identityModel.updateOne(
                                 { _id: result._id },
                                 {
                                     $set: {
