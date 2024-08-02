@@ -19,7 +19,6 @@ const loginmodel = new mongoose.Schema({
     },
     phoneNumber: {
         type: Number,
-        maxlength: 11
     },
 });
 
