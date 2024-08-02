@@ -43,6 +43,9 @@ exports.register = (request, response, next) => {
     const lastName = request.body.lastName;
     const fullName = `${request.body.firstName} ${request.body.lastName}`;
     const phoneNumber = request.body.phoneNumber != undefined ? request.body.phoneNumber : null;
+    const errorValidation = validator.validationResult(email);
+    identityModel
+        .findOne({ email: email })
     identityModel
         .findOne({ email: request.body.email })
         .collation({ locale: "en", strength: 2 })
