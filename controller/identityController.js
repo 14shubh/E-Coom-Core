@@ -1,10 +1,8 @@
 const identityModel = require("../models/identityModel");
 const userModel = require("../models/userModel");
 const bcrypt = require("bcrypt");
-const validator = require("express-validator");
 
 exports.signIn = (request, response, next) => {
-
     identityModel
         .findOne({ email: request.body.email })
         .collation({ locale: "en", strength: 2 })
@@ -43,12 +41,13 @@ exports.signIn = (request, response, next) => {
 exports.register = (request, response, next) => {
     const firstName = request.body.firstName;
     const lastName = request.body.lastName;
-    const email = request.body.email;
     const fullName = `${request.body.firstName} ${request.body.lastName}`;
     const phoneNumber = request.body.phoneNumber != undefined ? request.body.phoneNumber : null;
     const errorValidation = validator.validationResult(email);
     identityModel
         .findOne({ email: email })
+    identityModel
+        .findOne({ email: request.body.email })
         .collation({ locale: "en", strength: 2 })
         .then((data) => {
             if (data != null) {
@@ -56,63 +55,42 @@ exports.register = (request, response, next) => {
                     message: "Email already in use",
                 });
             } else {
-
-                if(request.body.firstName == null || request.body.firstName == undefined || request.body.firstName.length == 0){
-                    return response.status(500).json({
-                        errorMessage: "First name is required"
-                    })
-                }else if(request.body.lastName == null || request.body.lastName == undefined || request.body.lastName.length == 0){
-                    return response.status(500).json({
-                        errorMessage: "Last name is required"
-                    })
-                }
-                // else if(request.body.email == null || request.body.email == undefined || request.body.email.length == 0){
-                //     return response.status(500).json({
-                //         errorMessage: "Email is required"
-                //     })
-                // }
-                else{
-                    const user = new userModel({
-                        firstName: firstName,
-                        lastName: lastName,
-                        fullName: fullName,
-                        email: email,
-                        phoneNumber: phoneNumber,
-                    });
-
-                    bcrypt.genSalt(13, (err, salt) => {
-                        bcrypt.hash(request.body.password, salt, (hashError, hash) => {
-                            if (hash) {
-                                user.password = hash;
-                                identityModel.create({email: request.body.email, password: hash}).then(result=>{
-                                        if(result){
-                                            delete user.password;
-                                            user._id = result._id;
-                                            user.save()
-                                            .then((data) => {
-                                                return response.status(200).json({
-                                                    message: "User Created",
-                                                    data: data,
-                                                });
-                                            })
-                                            .catch((err) => {
-                                                return response.status(500).json({
-                                                    message: "Internal Server Error",
-                                                    error: err,
-                                                });
+                bcrypt.genSalt(13, (err, salt) => {
+                    bcrypt.hash(request.body.password, salt, (hashError, hash) => {
+                        if (hash) {
+                            const user = new userModel({
+                                firstName: firstName,
+                                lastName: lastName,
+                                fullName: fullName,
+                                email: request.body.email,
+                                password: hash,
+                                phoneNumber: phoneNumber,
+                            });
+                            identityModel.create({email: request.body.email, password: hash}).then(result=>{
+                                    if(result){
+                                        delete user.password;
+                                        user._id = result._id;
+                                        user.save()
+                                        .then((data) => {
+                                            return response.status(200).json({
+                                                message: "User Created",
+                                                data: data,
                                             });
-                                        }
-                                    })
-                                    
-                            } else {
-                                return response.status(500).json({
-                                    message: "Internal Server Error",
-                                    error: hashError,
-                                });
-                            }
-                        });
+                                        })
+                                        .catch((err) => {
+                                            return response.status(500).json({
+                                                message: "Internal Server Error",
+                                                error: err,
+                                            });
+                                        });
+                                    }
+                                })
+                                
+                        } else {
+                            console.log(hashError, "error");
+                        }
                     });
-                }
+                });
             }
         })
         .catch((error) => {
@@ -121,7 +99,6 @@ exports.register = (request, response, next) => {
                 error: error,
             });
         });
-    
 };
 exports.forgotPassword = (request, response, next) => {
     const user = new loginModel();
